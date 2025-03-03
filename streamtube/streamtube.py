@@ -9,9 +9,9 @@ Edited 2025 March 3
 import numpy as np
 from matplotlib import path
 
-import coriolis.stream3 as stream3
-from coriolis.integrate import streamline_2way, streamlines_2way
-from coriolis.block import block_reduce_centered
+from . import stream3 as stream3
+from .integrate import streamline_2way, streamlines_2way
+from .block import block_reduce_centered
 
 
 class Streamtube:

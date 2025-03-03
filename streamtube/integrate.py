@@ -11,7 +11,7 @@ from scipy.integrate import solve_ivp
 from streamtube.interpolate import (
     trilinear_interpolation,
 )
-from streamtube.stream3 import TerminateTrajectory
+from .stream3 import TerminateTrajectory
 
 
 def rk4_step(t_n, u_n, dudt, dt):

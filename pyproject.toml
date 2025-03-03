@@ -6,8 +6,9 @@ authors = ["Kirby Heck <kirby.heck@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
-
+python = "^3.8"
+numpy = ">=1.16"
+scipy = ">=1.6"
 
 [build-system]
 requires = ["poetry-core"]

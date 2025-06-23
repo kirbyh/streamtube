@@ -43,7 +43,7 @@ class Streamtube:
         self.maxlength = maxlength  # maximum streamline length (non-dim)
         self.method = method  # either 'solve_ivp', 'stream3' or 'integrator'
 
-        self.grid = stream3.Grid3(x, y, z)
+        self.grid = stream3.Grid3(np.array(x), np.array(y), np.array(z))
 
         # basic checks: u, v, w are the right size
         if (
@@ -254,6 +254,38 @@ class Streamtube:
         else:
             raise ValueError("__init__(): `masktype` must be 'bool' or 'float'")
 
+    def interp_to_xyz(self, x=None): 
+        """
+        Interpolates trajectories to a unified x-grid.
+        """
+        if self.trajectories is None: 
+            self.compute_streamtube()
+        
+        x = self.grid.x if x is None else x
+        return interp_to_xyz(self.trajectories, x)
+
+    def compute_outward_normals(self, traj_xyz=None, x=None, normalize=False): 
+        """
+        Computes outward-facing normal vectors to a surface defined by a 
+        3D array of points `traj_xyz` where traj_xyz.shape = [Nlines, 3, nx]
+        from self.interp_to_xyz(). 
+
+        Assumes that points `traj_xyz` have already been interpolated 
+        to a unifying x-line. Otherwise, calls self.interp_to_xyz()
+
+        Parameters
+        ----------
+        traj_xyz : np.ndarray
+            Optional. If None, calls self.interp_to_xyz()
+        x : np.ndarray
+            Optional. If None, uses self.grid.x
+        normalize : bool
+            If True, normalizes the normal vectors. Default is False.
+        """
+        if traj_xyz is None: 
+            traj_xyz = self.interp_to_xyz(x=x)
+        return compute_surface_normals(traj_xyz, normalize=normalize)
+
 
 def start_points_disk(R=0.5, N=128, origin=(0, 0, 0)):
     """
@@ -379,6 +411,68 @@ def upsample_line(x, nfact):
     return x_up
 
 
+def interp_to_xyz(trajectories, x):
+    """
+    Without deprecating `interp_to_x`, this function does what
+    that function probably should have done.
+
+    Returns
+    -------
+    3d array
+        [n_trajectories, n_x, 3]
+    """
+    nx = len(x)
+    traj_interp = np.zeros((len(trajectories), nx, 3))
+    for k, t in enumerate(trajectories):
+        traj_interp[k, :, 0] = x
+        traj_interp[k, :, 1] = np.interp(x, t[0], t[1])
+        traj_interp[k, :, 2] = np.interp(x, t[0], t[2])
+    return traj_interp
+
+
+def compute_surface_normals(arr, normalize=False):
+    """
+    Computes outward-facing normal vectors to a surface defined by a 
+    3D array of points `arr` where arr.shape = [Nlines, nx, 3]. 
+
+    Assumes that points `arr` have already been interpolated 
+    to a unifying x-line. 
+
+    Parameters
+    ----------
+    arr : np.ndarray
+        Input array of shape [Nlines, 3, nx].
+    normalize : bool, optional
+        If True, normalizes the normal vectors. Default is False.
+
+    Returns
+    -------
+    np.ndarray
+        Array of normal vectors with shape [Nlines, nx, 3].
+    """
+    normals = np.zeros_like(arr)  # To store the normals
+
+    # Compute tangent vectors along x-direction (axis 2)
+    tx = np.zeros_like(arr)
+    tx[:, :-1, :] = arr[:, 1:, :] - arr[:, :-1, :]  # Forward difference
+    tx[:, -1, :] = arr[:, -1, :] - arr[:, -2, :]    # Backward difference for last point
+
+    # Compute tangent vectors along line direction (axis 0)
+    tn = np.zeros_like(arr)
+    tn[:-1, :, :] = arr[1:, :, :] - arr[:-1, :, :]  # Forward difference
+    tn[-1, :, :] = arr[-1, :, :] - arr[-2, :, :]    # Backward difference for last line
+
+    # Compute normal vectors as cross product
+    normals = np.cross(tn, tx, axis=2)
+
+    # Normalize if requested
+    if normalize:
+        norm = np.linalg.norm(normals, axis=2, keepdims=True)
+        normals = np.divide(normals, norm, where=norm != 0)  # Avoid division by zero
+
+    return normals
+
+
 def interp_to_x(trajectories, x):
     """
     Interpolates trajectories to the 1D array x.
@@ -405,25 +499,6 @@ def interp_to_x(trajectories, x):
         traj_interp[:, k, 0] = np.interp(x, t[0], t[1])  # linear interpolation y-values
         traj_interp[:, k, 1] = np.interp(x, t[0], t[2])  # linear interpolation z-values
 
-    return traj_interp
-
-
-def interp_to_xyz(trajectories, x):
-    """
-    Without deprecating `interp_to_x`, this function does what
-    that function probably should have done.
-
-    Returns
-    -------
-    3d array
-        [n_trajectories, 3, n_x]
-    """
-    nx = len(x)
-    traj_interp = np.zeros((len(trajectories), 3, nx))
-    for k, t in enumerate(trajectories):
-        traj_interp[k, 0, :] = x
-        traj_interp[k, 1, :] = np.interp(x, t[0], t[1])
-        traj_interp[k, 2, :] = np.interp(x, t[0], t[2])
     return traj_interp
 
 

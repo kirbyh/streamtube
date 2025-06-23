@@ -186,4 +186,4 @@ def streamlines_2way(x, y, z, u, v, w, start_points, T=[0, 50], ivp_kwargs=None)
     """Vectorized two-way integration of streamlines"""
     fwd = streamlines(x, y, z, u, v, w, start_points, T=T, ivp_kwargs=ivp_kwargs)
     bkwd = streamlines(x, y, z, -u, -v, -w, start_points, T=T, ivp_kwargs=ivp_kwargs)
-    return np.concat((bkwd[..., ::-1], fwd), axis=-1)  # concatenate together
+    return np.concatenate((bkwd[..., ::-1], fwd), axis=-1)  # concatenate together
